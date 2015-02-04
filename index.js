@@ -358,6 +358,31 @@ var server = net.createServer(function(c) {
 					}
 				}
 			}
+			if(parsed.command == "TOPIC") {
+				if(parsed.params.length >= 2) {
+					var channel = parsed.params[0];
+					var topic = parsed.params[1];
+					request({url: 'https://api.gaminglive.tv/channels/', method: 'PATCH', json: true, body: {owner: channel.substr(1), slug: channel.substr(1), authToken: authtoken, name: topic}}, function(error, response, body) {
+						if(error || response.statusCode != 200) {
+							send("GamingLive!~GamingLive@gaminglive.tv", "NOTICE", [userfull(nick), "Failed to set channel topic"]);
+							if(error) {
+								send("GamingLive!~GamingLive@gaminglive.tv", "NOTICE", [userfull(nick), "Error: "+error]);
+							}
+							if(response.statusCode != 200) {
+								send("GamingLive!~GamingLive@gaminglive.tv", "NOTICE", [userfull(nick), "HTTP response code: "+response.statusCode]);
+							}
+							send("GamingLive!~GamingLive@gaminglive.tv", "NOTICE", [userfull(nick), "Make sure you have appropariate permissions"]);
+						} else {
+							for(var i=0; i<channels.length; i++) {
+								if(channels[i].name == channel) {
+									send(userfull(nick), "TOPIC", [channels[i].name, topic]);
+									channels[i].topic = topic;
+								}
+							}
+						}
+					});
+				}
+			}
 		}
 	});
 }).listen(6667, function() {
