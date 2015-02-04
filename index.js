@@ -181,6 +181,7 @@ var server = net.createServer(function(c) {
 			var line = lines[i];
 			if(line == '') continue;
 			var parsed = ircmsg.parseMessage(line);
+			parsed.command = parsed.command.toUpperCase();
 			//console.log(JSON.stringify(parsed));
 			if(parsed.command == "PASS") {
 				pass = parsed.params[0];
