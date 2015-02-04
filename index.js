@@ -226,6 +226,8 @@ var server = net.createServer(function(c) {
 						send(serverid, "372", [nick, "- "]);
 						send(serverid, "372", [nick, "- Made by krzys_h"]);
 						send(serverid, "372", [nick, "- "]);
+						send(serverid, "372", [nick, "- Source code available on GitHub: https://github.com/krzys-h/gamingliveirc"]);
+						send(serverid, "372", [nick, "- "]);
 						send(serverid, "372", [nick, "- THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY"]);
 						send(serverid, "372", [nick, "- APPLICABLE LAW. EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT"]);
 						send(serverid, "372", [nick, "- HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM “AS IS” WITHOUT"]);
