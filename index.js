@@ -89,6 +89,7 @@ var server = net.createServer(function(c) {
 		ws.on('message', function(messageJSON) {
 			var message = JSON.parse(messageJSON);
 			if(message.mtype == "BOT") {
+				//console.log("BOT MESSAGE: "+message.message);
 				var paramsList = message.message.split(",");
 				var params = {};
 				for(var i=0; i<paramsList.length; i++) {
@@ -100,7 +101,15 @@ var server = net.createServer(function(c) {
 					for(var x in params) {
 						msg = msg.replace("{{"+x+"}}", params[x]);
 					}
+					msg = msg.replace("{{hello_msg}}", "Jesteś teraz na kanale '"+channel.substr(1)+"'");
 					message.message = msg;
+					if(params["id"] == "KICK_KICKED") {
+						send("AliceBot!~AliceBot@alice.bot.gaminglive.tv", "KICK", [channel, params["user"], message.message]);
+						return;
+					}
+					if(params["id"] == "BAN_BANNED") {
+						send("AliceBot!~AliceBot@alice.bot.gaminglive.tv", "KICK", [channel, params["user"], message.message]);
+					}
 				}
 			} else if(message.mtype == "USER" && message.user.nick == nick) {
 				for(var i=0; i<sent_messages.length; i++) {
@@ -271,6 +280,48 @@ var server = net.createServer(function(c) {
 						}
 					}
 				}
+			}
+			if(parsed.command == "KICK") {
+				var channel = parsed.params[0];
+				var kicknick = parsed.params[1];
+				var time = 10;
+				if(parsed.params.length >= 3) {
+					try {
+						time = parseInt(parsed.params[2]);
+					} catch(e) {}
+				}
+				for(var i=0; i<channels.length; i++) {
+					if(channels[i].name == channel) {
+						channels[i].conn.send(JSON.stringify({message: "!kick "+kicknick+" "+time, color: "black"}));
+					}
+				}
+			}
+			if(parsed.command == "MODE") {
+				var channel = parsed.params[0];
+				if(parsed.params.length == 1) {
+					send(serverid, "324", [nick, channel, ""]);
+				} else if(parsed.params.length == 2) {
+					if(parsed.params[1] == "b" && parsed.params[1].length == 1) {
+						send(serverid, "368", [nick, channel, "Banlist not supported (yet)"]);
+					}
+				} else if(parsed.params.length == 3 && parsed.params[1].length == 2) {
+					if(parsed.params[1][1] == "b") {
+						for(var i=0; i<channels.length; i++) {
+							if(channels[i].name == channel) {
+								var kicknick = parsed.params[2];
+								if(kicknick.indexOf("!") !== -1) {
+									kicknick = kicknick.substr(0, kicknick.indexOf("!"));
+								}
+								channels[i].conn.send(JSON.stringify({message: "!"+(parsed.params[1][0] == "+" ? "ban" : "unban")+" "+kicknick, color: "black"}));
+							}
+						}
+					}
+				}
+			}
+			if(parsed.command == "WHO") {
+				var channel = parsed.params[0];
+				send(serverid, "352", [nick, "=", channel, nick]);
+				send(serverid, "315", [nick, channel, "End of /WHO list."]);
 			}
 		}
 	});
