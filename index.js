@@ -7,6 +7,7 @@ var serverid = "gamingliveirc.krzysh.pl";
 var version = "0.0.1";
 
 function userfull(nick) {
+	if(nick == "AliceBot") return "AliceBot!~AliceBot@bot.gaminglive.tv";
 	return nick+"!~"+nick+"@"+nick+".users.gaminglive.tv";
 }
 
@@ -18,6 +19,17 @@ request('http://gaminglive.tv/i18n/pl.json', function(error, response, body) {
 	trans = JSON.parse(body);
 	console.log("Received translation data");
 });
+
+function formatUserList(users)
+{
+	var result = [];
+	for(var i=0; i<users.length; i++) {
+		var role = "";
+		if(users[i] == "AliceBot") role = "+";
+		result.push(role+users[i]);
+	}
+	return result;
+}
 
 var server = net.createServer(function(c) {
 	var nick;
@@ -41,7 +53,7 @@ var server = net.createServer(function(c) {
 				if(typeof channels[x].topic == "undefined") {
 					send(serverid, "332", [nick, channels[x].name, topic]);
 					send(serverid, "333", [nick, channels[x].name, "GamingLive!~GamingLive@gaminglive.tv", Math.floor(Date.now() / 1000).toString()]);
-					send(serverid, "353", [nick, "=", channels[x].name, nick]);
+					send(serverid, "353", ([nick, "=", channels[x].name]).concat(formatUserList(channels[x].users)));
 					send(serverid, "366", [nick, channels[x].name, "End of NAMES list."]);
 				} else if(channels[x].topic != topic) {
 					send("GamingLive!~GamingLive@gaminglive.tv", "TOPIC", [channels[x].name, topic]);
@@ -104,11 +116,11 @@ var server = net.createServer(function(c) {
 					msg = msg.replace("{{hello_msg}}", "Jesteś teraz na kanale '"+channel.substr(1)+"'");
 					message.message = msg;
 					if(params["id"] == "KICK_KICKED") {
-						send("AliceBot!~AliceBot@alice.bot.gaminglive.tv", "KICK", [channel, params["user"], message.message]);
+						send("AliceBot!~AliceBot@bot.gaminglive.tv", "KICK", [channel, params["user"], message.message]);
 						return;
 					}
 					if(params["id"] == "BAN_BANNED") {
-						send("AliceBot!~AliceBot@alice.bot.gaminglive.tv", "KICK", [channel, params["user"], message.message]);
+						send("AliceBot!~AliceBot@bot.gaminglive.tv", "KICK", [channel, params["user"], message.message]);
 					}
 				}
 			} else if(message.mtype == "USER" && message.user.nick == nick) {
@@ -116,6 +128,15 @@ var server = net.createServer(function(c) {
 					if(sent_messages[i].channel == channel && sent_messages[i].message == message.message) {
 						sent_messages.splice(i, 1);
 						return;
+					}
+				}
+			}
+			
+			for(var i=0; i<channels.length; i++) {
+				if(channels[i].name == channel) {
+					if(channels[i].users.indexOf(message.user.nick) === -1) {
+						send(userfull(message.user.nick), "JOIN", [channel]);
+						channels[i].users.push(message.user.nick);
 					}
 				}
 			}
@@ -246,7 +267,7 @@ var server = net.createServer(function(c) {
 			if(parsed.command == "JOIN") {
 				var j = parsed.params[0].split(",");
 				for(var i=0; i<j.length; i++) {
-					var ch = {name: j[i], conn: null, joining: true, leaving: false, nopartmsg: false};
+					var ch = {name: j[i], conn: null, joining: true, leaving: false, nopartmsg: false, users: ["AliceBot", nick]};
 					channels.push(ch);
 					ch.conn = connectToGL(ch.name);
 				}
@@ -303,7 +324,7 @@ var server = net.createServer(function(c) {
 					send(serverid, "324", [nick, channel, ""]);
 				} else if(parsed.params.length == 2) {
 					if(parsed.params[1] == "b" && parsed.params[1].length == 1) {
-						send(serverid, "368", [nick, channel, "Banlist not supported (yet)"]);
+						send(serverid, "368", [nick, channel, "Banlist not supported"]);
 					}
 				} else if(parsed.params.length == 3 && parsed.params[1].length == 2) {
 					if(parsed.params[1][1] == "b") {
@@ -321,8 +342,21 @@ var server = net.createServer(function(c) {
 			}
 			if(parsed.command == "WHO") {
 				var channel = parsed.params[0];
-				send(serverid, "352", [nick, "=", channel, nick]);
-				send(serverid, "315", [nick, channel, "End of /WHO list."]);
+				for(var i=0; i<channels.length; i++) {
+					if(channels[i].name == channel) {
+						var usr = channels[i].users;
+						for(var i=0; i<usr.length; i++) {
+							var host = usr[i]+".users.gaminglive.tv";
+							if(usr[i] == "AliceBot") host = "bot.gaminglive.tv";
+							var realname = "http://gaminglive.tv/channels/"+usr[i];
+							if(usr[i] == "AliceBot") realname = "https://gaminglive1.zendesk.com/hc/en-us/articles/202155502-Chat-Moderation";
+							var role = "";
+							if(usr[i] == "AliceBot") role = "+";
+							send(serverid, "352", [nick, channel, "~"+usr[i], host, serverid, usr[i], "H"+role, ":0", realname]);
+						}
+						send(serverid, "315", [nick, channel, "End of /WHO list."]);
+					}
+				}
 			}
 		}
 	});
