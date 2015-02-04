@@ -1,0 +1,15 @@
+{
+  "name": "gamingliveirc",
+  "version": "0.0.1",
+  "description": "Connect to GamingLive chat with IRC",
+  "author": "krzys-h",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "irc-message": "~2.0.1",
+    "ws": "~0.7.1"
+  },
+  "license": "GPLv3"
+}
