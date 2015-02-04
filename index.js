@@ -38,6 +38,7 @@ var server = net.createServer(function(c) {
 	var channels = [];
 	var sent_messages = [];
 	var updater;
+	var anonymous = true;
 
 	function streamUpdater() {
 		for(var i=0; i<channels.length; i++) {
@@ -86,7 +87,7 @@ var server = net.createServer(function(c) {
 
 	function connectToGL(channel)
 	{
-		var ws = new WebSocket('wss://api.gaminglive.tv/chat/'+channel.substr(1)+'?nick='+nick+'&authToken='+authtoken);
+		var ws = new WebSocket('wss://api.gaminglive.tv/chat/'+channel.substr(1)+'?nick='+(anonymous ? '__$anonymous' : nick)+'&authToken='+(anonymous ? '__$anonymous' : authtoken));
 		ws.on('open', function() {
 			console.log("["+nick+"] Connected to "+channel);
 			send(userfull(nick), "JOIN", [channel]);
@@ -206,62 +207,75 @@ var server = net.createServer(function(c) {
 			//console.log(JSON.stringify(parsed));
 			if(parsed.command == "PASS") {
 				pass = parsed.params[0];
+				anonymous = false;
 			}
 			if(parsed.command == "NICK") {
 				nick = parsed.params[0];
 			}
 			if(parsed.command == "USER") {
-				console.log("Logging in as "+nick);
-				request({url: 'https://api.gaminglive.tv/auth/session', method: 'POST', json: true, body: {email: nick, password: pass}}, function(error, response, body) {
-					if(typeof body == "object" && body["ok"]) {
-						authtoken = body["authToken"];
-						console.log("Received auth token for "+nick);
-					
-						send(serverid, "001", [nick, "Welcome to the krzys_h's GamingLive.tv IRC proxy "+userfull(nick)]);
-						send(serverid, "002", [nick, "Your host is "+serverid+", running version "+version]);
-						send(serverid, "003", [nick, "This server was created <put date here>"]);
-						send(serverid, "004", [nick, serverid, version, "", ""]);
-						send(serverid, "005", [nick, "PREFIX=(ov)@+", "CHANTYPE=#", "NETWORK=GamingLive.tv", "are supported by this server"]);
-						send(serverid, "375", [nick, "- "+serverid+" Message of the day -"]);
-						send(serverid, "372", [nick, "- "]);
-						send(serverid, "372", [nick, "- Made by krzys_h"]);
-						send(serverid, "372", [nick, "- "]);
-						send(serverid, "372", [nick, "- Source code available on GitHub: https://github.com/krzys-h/gamingliveirc"]);
-						send(serverid, "372", [nick, "- "]);
-						send(serverid, "372", [nick, "- THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY"]);
-						send(serverid, "372", [nick, "- APPLICABLE LAW. EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT"]);
-						send(serverid, "372", [nick, "- HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM “AS IS” WITHOUT"]);
-						send(serverid, "372", [nick, "- WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT"]);
-						send(serverid, "372", [nick, "- LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR"]);
-						send(serverid, "372", [nick, "- A PARTICULAR PURPOSE. THE ENTIRE RISK AS TO THE QUALITY AND"]);
-						send(serverid, "372", [nick, "- PERFORMANCE OF THE PROGRAM IS WITH YOU. SHOULD THE PROGRAM PROVE"]);
-						send(serverid, "372", [nick, "- DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR"]);
-						send(serverid, "372", [nick, "- CORRECTION."]);
-						send(serverid, "372", [nick, "- "]);
-						send(serverid, "376", [nick, "- End of MOTD"]);
-					} else {
-						send(serverid, "NOTICE", [userfull(nick), "Unable to log in. GamingLive server returned following errors:"]);
-						for(var i=0; i<body["errors"].length; i++) {
-							var err = body["errors"][i];
-							if(typeof trans["ACCOUNT"]["LOGIN"]["ERRORS"][err] != "undefined")
-								err = trans["ACCOUNT"]["LOGIN"]["ERRORS"][err];
-							send(serverid, "NOTICE", [userfull(nick), err]);
-						}
-						if(body["errors"].length == 0) {
-							send(serverid, "NOTICE", [userfull(nick), "No errors. Bad username?"]);
-						}
-						if(typeof body != "object") {
-							if(error) {
-								send(serverid, "NOTICE", [userfull(nick), "Connection error: "+error]);
+				if(!anonymous) {
+					console.log("Logging in as "+nick);
+				} else {
+					console.log("Logging in anonymously as "+nick);
+				}
+				function dologin() {
+					send(serverid, "001", [nick, "Welcome to the krzys_h's GamingLive.tv IRC proxy "+userfull(nick)]);
+					send(serverid, "002", [nick, "Your host is "+serverid+", running version "+version]);
+					send(serverid, "003", [nick, "This server was created <put date here>"]);
+					send(serverid, "004", [nick, serverid, version, "", ""]);
+					send(serverid, "005", [nick, "PREFIX=(ov)@+", "CHANTYPE=#", "NETWORK=GamingLive.tv", "are supported by this server"]);
+					send(serverid, "375", [nick, "- "+serverid+" Message of the day -"]);
+					send(serverid, "372", [nick, "- "]);
+					send(serverid, "372", [nick, "- Made by krzys_h"]);
+					send(serverid, "372", [nick, "- "]);
+					send(serverid, "372", [nick, "- Source code available on GitHub: https://github.com/krzys-h/gamingliveirc"]);
+					send(serverid, "372", [nick, "- "]);
+					send(serverid, "372", [nick, "- THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY"]);
+					send(serverid, "372", [nick, "- APPLICABLE LAW. EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT"]);
+					send(serverid, "372", [nick, "- HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM “AS IS” WITHOUT"]);
+					send(serverid, "372", [nick, "- WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT"]);
+					send(serverid, "372", [nick, "- LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR"]);
+					send(serverid, "372", [nick, "- A PARTICULAR PURPOSE. THE ENTIRE RISK AS TO THE QUALITY AND"]);
+					send(serverid, "372", [nick, "- PERFORMANCE OF THE PROGRAM IS WITH YOU. SHOULD THE PROGRAM PROVE"]);
+					send(serverid, "372", [nick, "- DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR OR"]);
+					send(serverid, "372", [nick, "- CORRECTION."]);
+					send(serverid, "372", [nick, "- "]);
+					send(serverid, "376", [nick, "- End of MOTD"]);
+				}
+				
+				if(anonymous) {
+					dologin();
+					send(serverid, "NOTICE", [userfull(nick), "Anonymous login. You won't be able to send messages. Please use PASS command to provide your password."]);
+				} else {
+					request({url: 'https://api.gaminglive.tv/auth/session', method: 'POST', json: true, body: {email: nick, password: pass}}, function(error, response, body) {
+						if(typeof body == "object" && body["ok"]) {
+							authtoken = body["authToken"];
+							console.log("Received auth token for "+nick);
+							dologin();
+						} else {
+							send(serverid, "NOTICE", [userfull(nick), "Unable to log in. GamingLive server returned following errors:"]);
+							for(var i=0; i<body["errors"].length; i++) {
+								var err = body["errors"][i];
+								if(typeof trans["ACCOUNT"]["LOGIN"]["ERRORS"][err] != "undefined")
+									err = trans["ACCOUNT"]["LOGIN"]["ERRORS"][err];
+								send(serverid, "NOTICE", [userfull(nick), err]);
 							}
-							if(response.statusCode != 200) {
-								send(serverid, "NOTICE", [userfull(nick), "Connection error: HTTP status code "+response.statusCode]);
+							if(body["errors"].length == 0) {
+								send(serverid, "NOTICE", [userfull(nick), "No errors. Bad username?"]);
 							}
+							if(typeof body != "object") {
+								if(error) {
+									send(serverid, "NOTICE", [userfull(nick), "Connection error: "+error]);
+								}
+								if(response.statusCode != 200) {
+									send(serverid, "NOTICE", [userfull(nick), "Connection error: HTTP status code "+response.statusCode]);
+								}
+							}
+							send("", "ERROR", ["Closing Link: "+nick+"["+nick+".users.livegamers.tv] (Authorization error)"]);
+							c.end();
 						}
-						send("", "ERROR", ["Closing Link: "+nick+"["+nick+".users.livegamers.tv] (Authorization error)"]);
-						c.end();
-					}
-				});
+					});
+				}
 			}
 			if(parsed.command == "PING") {
 				send("", "PONG", [parsed.params[0]]);
@@ -269,7 +283,8 @@ var server = net.createServer(function(c) {
 			if(parsed.command == "JOIN") {
 				var j = parsed.params[0].split(",");
 				for(var i=0; i<j.length; i++) {
-					var ch = {name: j[i], conn: null, joining: true, leaving: false, nopartmsg: false, users: ["AliceBot", nick]};
+					var ch = {name: j[i], conn: null, joining: true, leaving: false, nopartmsg: false, users: ["AliceBot"]};
+					if(!anonymous) ch.users.push(nick);
 					channels.push(ch);
 					ch.conn = connectToGL(ch.name);
 				}
@@ -295,12 +310,16 @@ var server = net.createServer(function(c) {
 				clearInterval(updater);
 			}
 			if(parsed.command == "PRIVMSG") {
-				if(parsed.params[0][0] == "#") {
-					for(var i=0; i<channels.length; i++) {
-						if(channels[i].name == parsed.params[0]) {
-							console.log("["+nick+"] Send "+parsed.params[1]+" to "+parsed.params[0]);
-							sent_messages.push({channel: parsed.params[0], message: parsed.params[1]});
-							channels[i].conn.send(JSON.stringify({message: parsed.params[1], color: "black"}));
+				if(anonymous) {
+					send(serverid, "NOTICE", [userfull(nick), "Please log in to send messages"]);
+				} else {
+					if(parsed.params[0][0] == "#") {
+						for(var i=0; i<channels.length; i++) {
+							if(channels[i].name == parsed.params[0]) {
+								console.log("["+nick+"] Send "+parsed.params[1]+" to "+parsed.params[0]);
+								sent_messages.push({channel: parsed.params[0], message: parsed.params[1]});
+								channels[i].conn.send(JSON.stringify({message: parsed.params[1], color: "black"}));
+							}
 						}
 					}
 				}
