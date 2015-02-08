@@ -137,6 +137,7 @@ var server = net.createServer(function(c) {
 									channels[i].mods = params["mods"].substr(1, params["mods"].length-2).split(":");
 									channels[i].mods.push(nick);
 									console.log(nick+" is an admin on "+channel);
+									send(serverid, "MODE", [channel, "+o", nick]);
 									return;
 								}
 								if(params["id"] == "ERROR_NOT_HOST_OR_ADMIN") {
@@ -149,20 +150,35 @@ var server = net.createServer(function(c) {
 						}
 					}
 				}
-			} else if(message.mtype == "USER" && message.user.nick == nick) {
-				for(var i=0; i<sent_messages.length; i++) {
-					if(sent_messages[i].channel == channel && sent_messages[i].message == message.message) {
-						sent_messages.splice(i, 1);
-						return;
-					}
-				}
 			}
 			
 			for(var i=0; i<channels.length; i++) {
 				if(channels[i].name == channel) {
+					if(message.user.role == "moderator") {
+						if(channels[i].mods.indexOf(message.user.nick) === -1) {
+							channels[i].mods.push(message.user.nick);
+						}
+					}
+					
 					if(channels[i].users.indexOf(message.user.nick) === -1) {
 						send(userfull(message.user.nick), "JOIN", [channel]);
+						if(message.user.role == "moderator") {
+							send(serverid, "MODE", [channel, "+h", message.user.nick]);
+						}
+						if(message.user.role == "host") {
+							send(serverid, "MODE", [channel, "+o", message.user.nick]);
+							channels[i].admin = message.user.nick;
+						}
 						channels[i].users.push(message.user.nick);
+					}
+				}
+			}
+
+			if(message.mtype == "USER" && message.user.nick == nick) {
+				for(var i=0; i<sent_messages.length; i++) {
+					if(sent_messages[i].channel == channel && sent_messages[i].message == message.message) {
+						sent_messages.splice(i, 1);
+						return;
 					}
 				}
 			}
@@ -248,7 +264,7 @@ var server = net.createServer(function(c) {
 					send(serverid, "002", [nick, "Your host is "+serverid+", running version "+version]);
 					send(serverid, "003", [nick, "This server was created <put date here>"]);
 					send(serverid, "004", [nick, serverid, version, "", ""]);
-					send(serverid, "005", [nick, "PREFIX=(ov)@+", "CHANTYPE=#", "NETWORK=GamingLive.tv", "are supported by this server"]);
+					send(serverid, "005", [nick, "PREFIX=(ohv)@%+", "CHANTYPE=#", "NETWORK=GamingLive.tv", "are supported by this server"]);
 					send(serverid, "375", [nick, "- "+serverid+" Message of the day -"]);
 					send(serverid, "372", [nick, "- "]);
 					send(serverid, "372", [nick, "- Made by krzys_h"]);
@@ -308,7 +324,7 @@ var server = net.createServer(function(c) {
 			if(parsed.command == "JOIN") {
 				var j = parsed.params[0].split(",");
 				for(var i=0; i<j.length; i++) {
-					var ch = {name: j[i], conn: null, joining: true, leaving: false, nopartmsg: false, users: ["AliceBot"], wait_modlist: false, is_admin: false, mods: []};
+					var ch = {name: j[i], conn: null, joining: true, leaving: false, nopartmsg: false, users: ["AliceBot"], wait_modlist: false, is_admin: false, mods: [], admin: null};
 					if(!anonymous) ch.users.push(nick);
 					channels.push(ch);
 					ch.conn = connectToGL(ch.name);
@@ -398,8 +414,10 @@ var server = net.createServer(function(c) {
 							var realname = "http://gaminglive.tv/channels/"+usr[i];
 							if(usr[i] == "AliceBot") realname = "https://gaminglive1.zendesk.com/hc/en-us/articles/202155502-Chat-Moderation";
 							var role = "";
+							if(chan.mods.indexOf(usr[i]) !== -1) role = "%";
+							if(usr[i] == nick && chan.is_admin) role = "@";
+							if(usr[i] == chan.admin) role = "@";
 							if(usr[i] == "AliceBot") role = "+";
-							if(chan.mods.indexOf(usr[i]) !== -1) role = "@";
 							send(serverid, "352", [nick, channel, "~"+usr[i], host, serverid, usr[i], "H"+role, ":0", realname]);
 						}
 						send(serverid, "315", [nick, channel, "End of /WHO list."]);
